@@ -12,7 +12,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/metadataproviders v0.56.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencensus v0.56.0
 	github.com/stretchr/testify v1.8.0
-	go.opentelemetry.io/collector v0.56.0
+	go.opentelemetry.io/collector v0.58.0
 	go.opentelemetry.io/collector/pdata v0.56.0
 	go.opentelemetry.io/collector/semconv v0.56.0
 	go.uber.org/multierr v1.8.0
@@ -79,10 +79,10 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/stretchr/objx v0.4.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.33.0 // indirect
-	go.opentelemetry.io/otel v1.8.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.34.0 // indirect
+	go.opentelemetry.io/otel v1.9.0 // indirect
 	go.opentelemetry.io/otel/metric v0.31.0 // indirect
-	go.opentelemetry.io/otel/trace v1.8.0 // indirect
+	go.opentelemetry.io/otel/trace v1.9.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
@@ -93,7 +93,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220421151946-72621c1f0bd3 // indirect
 	google.golang.org/grpc v1.48.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

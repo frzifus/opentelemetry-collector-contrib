@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/collector/pdata v0.56.0
 	go.opentelemetry.io/collector/semconv v0.56.0
 	go.uber.org/multierr v1.8.0
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.24.0
 	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0
 	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3

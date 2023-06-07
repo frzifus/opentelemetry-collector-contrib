@@ -64,5 +64,17 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
 
+	numCPU, err := cpu.Counts(false)
+	if err != nil {
+		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	}
+	s.recordCPUPhysicalCountDataPoint(now, numCPU)
+
+	numCPU, err = cpu.Counts(true)
+	if err != nil {
+		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	}
+	s.recordCPULogicalCountDataPoint(now, numCPU)
+
 	return s.mb.Emit(), nil
 }

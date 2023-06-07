@@ -26,6 +26,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemCPUCount:       MetricConfig{Enabled: true},
 					SystemCPUTime:        MetricConfig{Enabled: true},
 					SystemCPUUtilization: MetricConfig{Enabled: true},
 				},
@@ -35,6 +36,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemCPUCount:       MetricConfig{Enabled: false},
 					SystemCPUTime:        MetricConfig{Enabled: false},
 					SystemCPUUtilization: MetricConfig{Enabled: false},
 				},

@@ -37,6 +37,20 @@ metrics:
     enabled: true
 ```
 
+### system.cpu.count
+
+Number of available CPUs.
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| 1 | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| machine-id | Machine identifier. | Any Str |
+
 ### system.cpu.utilization
 
 Percentage of CPU time broken down by different states.

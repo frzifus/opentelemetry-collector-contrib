@@ -62,6 +62,57 @@ var MapAttributeState = map[string]AttributeState{
 	"wait":      AttributeStateWait,
 }
 
+type metricSystemCPUCount struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills system.cpu.count metric with initial data.
+func (m *metricSystemCPUCount) init() {
+	m.data.SetName("system.cpu.count")
+	m.data.SetDescription("Number of available CPUs.")
+	m.data.SetUnit("1")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSystemCPUCount) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, machineIDAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("machine-id", machineIDAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSystemCPUCount) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSystemCPUCount) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSystemCPUCount(cfg MetricConfig) metricSystemCPUCount {
+	m := metricSystemCPUCount{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 type metricSystemCPUTime struct {
 	data     pmetric.Metric // data buffer for generated metric.
 	config   MetricConfig   // metric config provided by user.
@@ -176,6 +227,7 @@ type MetricsBuilder struct {
 	resourceCapacity           int                 // maximum observed number of resource attributes.
 	metricsBuffer              pmetric.Metrics     // accumulates metrics data before emitting.
 	buildInfo                  component.BuildInfo // contains version information
+	metricSystemCPUCount       metricSystemCPUCount
 	metricSystemCPUTime        metricSystemCPUTime
 	metricSystemCPUUtilization metricSystemCPUUtilization
 }
@@ -195,6 +247,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.CreateSetting
 		startTime:                  pcommon.NewTimestampFromTime(time.Now()),
 		metricsBuffer:              pmetric.NewMetrics(),
 		buildInfo:                  settings.BuildInfo,
+		metricSystemCPUCount:       newMetricSystemCPUCount(mbc.Metrics.SystemCPUCount),
 		metricSystemCPUTime:        newMetricSystemCPUTime(mbc.Metrics.SystemCPUTime),
 		metricSystemCPUUtilization: newMetricSystemCPUUtilization(mbc.Metrics.SystemCPUUtilization),
 	}
@@ -250,6 +303,7 @@ func (mb *MetricsBuilder) EmitForResource(rmo ...ResourceMetricsOption) {
 	ils.Scope().SetName("otelcol/hostmetricsreceiver/cpu")
 	ils.Scope().SetVersion(mb.buildInfo.Version)
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
+	mb.metricSystemCPUCount.emit(ils.Metrics())
 	mb.metricSystemCPUTime.emit(ils.Metrics())
 	mb.metricSystemCPUUtilization.emit(ils.Metrics())
 
@@ -270,6 +324,11 @@ func (mb *MetricsBuilder) Emit(rmo ...ResourceMetricsOption) pmetric.Metrics {
 	metrics := mb.metricsBuffer
 	mb.metricsBuffer = pmetric.NewMetrics()
 	return metrics
+}
+
+// RecordSystemCPUCountDataPoint adds a data point to system.cpu.count metric.
+func (mb *MetricsBuilder) RecordSystemCPUCountDataPoint(ts pcommon.Timestamp, val int64, machineIDAttributeValue string) {
+	mb.metricSystemCPUCount.recordDataPoint(mb.startTime, ts, val, machineIDAttributeValue)
 }
 
 // RecordSystemCPUTimeDataPoint adds a data point to system.cpu.time metric.

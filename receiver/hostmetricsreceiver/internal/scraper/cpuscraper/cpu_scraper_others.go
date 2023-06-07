@@ -27,3 +27,9 @@ func (s *scraper) recordCPUUtilization(now pcommon.Timestamp, cpuUtilization uca
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Idle, cpuUtilization.CPU, metadata.AttributeStateIdle)
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Irq, cpuUtilization.CPU, metadata.AttributeStateInterrupt)
 }
+
+func (s *scraper) recordCPUCountDataPoint(now pcommon.Timestamp, count int, machineID string) {}
+
+func getMachineID() (string, error) {
+	return "", nil
+}

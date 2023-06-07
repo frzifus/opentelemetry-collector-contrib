@@ -1,12 +1,16 @@
 default:
 all_set:
   metrics:
+    system.cpu.count:
+      enabled: true
     system.cpu.time:
       enabled: true
     system.cpu.utilization:
       enabled: true
 none_set:
   metrics:
+    system.cpu.count:
+      enabled: false
     system.cpu.time:
       enabled: false
     system.cpu.utilization:

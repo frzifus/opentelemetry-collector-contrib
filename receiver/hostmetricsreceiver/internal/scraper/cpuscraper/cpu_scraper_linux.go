@@ -7,6 +7,9 @@
 package cpuscraper // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/cpuscraper"
 
 import (
+	"io/ioutil"
+	"strings"
+
 	"github.com/shirou/gopsutil/v3/cpu"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
@@ -34,4 +37,17 @@ func (s *scraper) recordCPUUtilization(now pcommon.Timestamp, cpuUtilization uca
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Softirq, cpuUtilization.CPU, metadata.AttributeStateSoftirq)
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Steal, cpuUtilization.CPU, metadata.AttributeStateSteal)
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Iowait, cpuUtilization.CPU, metadata.AttributeStateWait)
+}
+
+func (s *scraper) recordCPUCountDataPoint(now pcommon.Timestamp, count int, machineID string) {
+	s.mb.RecordSystemCPUCountDataPoint(now, int64(count), machineID)
+}
+
+func getMachineID() (string, error) {
+	machineID, err := ioutil.ReadFile("/etc/machine-id")
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(machineID)), nil
 }

@@ -12,6 +12,10 @@ attributes:
     type: string
     enum: [idle, interrupt, nice, softirq, steal, system, user, wait]
 
+  machine-id:
+    description: Machine identifier.
+    type: string
+
 metrics:
   system.cpu.time:
     enabled: true
@@ -30,3 +34,11 @@ metrics:
     gauge:
       value_type: double
     attributes: [cpu, state]
+
+  system.cpu.count:
+    enabled: false
+    description: Number of available CPUs.
+    unit: 1
+    gauge:
+      value_type: int
+    attributes: [machine-id]

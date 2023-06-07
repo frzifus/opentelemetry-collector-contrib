@@ -54,6 +54,9 @@ func TestMetricsBuilder(t *testing.T) {
 			defaultMetricsCount := 0
 			allMetricsCount := 0
 
+			allMetricsCount++
+			mb.RecordSystemCPUCountDataPoint(ts, 1, "attr-val")
+
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSystemCPUTimeDataPoint(ts, 1, "attr-val", AttributeState(1))
@@ -86,6 +89,21 @@ func TestMetricsBuilder(t *testing.T) {
 			validatedMetrics := make(map[string]bool)
 			for i := 0; i < ms.Len(); i++ {
 				switch ms.At(i).Name() {
+				case "system.cpu.count":
+					assert.False(t, validatedMetrics["system.cpu.count"], "Found a duplicate in the metrics slice: system.cpu.count")
+					validatedMetrics["system.cpu.count"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "Number of available CPUs.", ms.At(i).Description())
+					assert.Equal(t, "1", ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("machine-id")
+					assert.True(t, ok)
+					assert.EqualValues(t, "attr-val", attrVal.Str())
 				case "system.cpu.time":
 					assert.False(t, validatedMetrics["system.cpu.time"], "Found a duplicate in the metrics slice: system.cpu.time")
 					validatedMetrics["system.cpu.time"] = true

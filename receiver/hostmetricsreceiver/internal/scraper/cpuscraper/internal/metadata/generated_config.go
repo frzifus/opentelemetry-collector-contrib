@@ -25,12 +25,16 @@ func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
 
 // MetricsConfig provides config for hostmetricsreceiver/cpu metrics.
 type MetricsConfig struct {
+	SystemCPUCount       MetricConfig `mapstructure:"system.cpu.count"`
 	SystemCPUTime        MetricConfig `mapstructure:"system.cpu.time"`
 	SystemCPUUtilization MetricConfig `mapstructure:"system.cpu.utilization"`
 }
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
+		SystemCPUCount: MetricConfig{
+			Enabled: false,
+		},
 		SystemCPUTime: MetricConfig{
 			Enabled: true,
 		},

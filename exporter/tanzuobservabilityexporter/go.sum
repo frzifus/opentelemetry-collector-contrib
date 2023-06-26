@@ -441,8 +441,8 @@ go.opentelemetry.io/collector/processor v0.0.0-20230609193203-89d1060c7606 h1:K2
 go.opentelemetry.io/collector/processor v0.0.0-20230609193203-89d1060c7606/go.mod h1:8+isoLVhFkBwPaFl8jkWe1h2fjs9lgmhY0zPzLQ5WuM=
 go.opentelemetry.io/collector/receiver v0.79.1-0.20230609201858-ed8547a8e5d6 h1:h7Mdww7QeZUFt4dvv9cdsnbR+5TOg7IwiUvTZmTgfrI=
 go.opentelemetry.io/collector/receiver v0.79.1-0.20230609201858-ed8547a8e5d6/go.mod h1:3owfLpZ4d6m8YxYaOFQ1gknZtMkMsH0IA/2Uo28tWOk=
-go.opentelemetry.io/collector/semconv v0.79.1-0.20230609201858-ed8547a8e5d6 h1:PAco2egtfhF65HS8jnQtEHJx2FquVcZd5luj/IbgLvo=
-go.opentelemetry.io/collector/semconv v0.79.1-0.20230609201858-ed8547a8e5d6/go.mod h1:TlYPtzvsXyHOgr5eATi43qEMqwSmIziivJB2uctKswo=
+go.opentelemetry.io/collector/semconv v0.80.0 h1:tngEIKYoQWfgp7V3NFqAQp2Hs1/3hTXSCK1GBegZHgs=
+go.opentelemetry.io/collector/semconv v0.80.0/go.mod h1:TlYPtzvsXyHOgr5eATi43qEMqwSmIziivJB2uctKswo=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0 h1:pginetY7+onl4qN1vl0xW/V/v6OBZ0vVdH+esuJgvmM=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0/go.mod h1:XiYsayHc36K3EByOO6nbAXnAWbrUxdjUROCEeeROOH8=
 go.opentelemetry.io/contrib/propagators/b3 v1.17.0 h1:ImOVvHnku8jijXqkwCSyYKRDt2YrnGXD4BbhcpfbfJo=

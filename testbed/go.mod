@@ -46,7 +46,7 @@ require (
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.79.1-0.20230609201858-ed8547a8e5d6
 	go.opentelemetry.io/collector/receiver v0.79.1-0.20230609201858-ed8547a8e5d6
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.79.1-0.20230609201858-ed8547a8e5d6
-	go.opentelemetry.io/collector/semconv v0.79.1-0.20230609201858-ed8547a8e5d6
+	go.opentelemetry.io/collector/semconv v0.80.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.10.0

@@ -10,9 +10,9 @@ require (
 	go.opentelemetry.io/collector/confmap v0.79.1-0.20230609201858-ed8547a8e5d6
 	go.opentelemetry.io/collector/consumer v0.79.1-0.20230609201858-ed8547a8e5d6
 	go.opentelemetry.io/collector/exporter v0.79.1-0.20230609201858-ed8547a8e5d6
-	go.opentelemetry.io/collector/pdata v1.0.0-rcv0012.0.20230609201858-ed8547a8e5d6
+	go.opentelemetry.io/collector/pdata v1.0.0-rcv0013
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.56.0
 )
 
 require (
@@ -46,7 +46,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect

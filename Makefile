@@ -334,7 +334,7 @@ build-examples:
 %-package:
 	GOOS=linux GOARCH=$(ARCH) $(MAKE) otelcontribcol
 	docker build -t otelcontribcol-fpm internal/buildscripts/packaging/fpm
-	docker run --rm -v $(CURDIR):/repo -e PACKAGE=$* -e VERSION=$(VERSION) -e ARCH=$(ARCH) otelcontribcol-fpm
+	docker run --rm -v $(CURDIR):/repo:z -e PACKAGE=$* -e VERSION=$(VERSION) -e ARCH=$(ARCH) otelcontribcol-fpm
 
 # Verify existence of READMEs for components specified as default components in the collector.
 .PHONY: checkdoc

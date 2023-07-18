@@ -27,3 +27,11 @@ func (s *scraper) recordCPUUtilization(now pcommon.Timestamp, cpuUtilization uca
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Idle, cpuUtilization.CPU, metadata.AttributeStateIdle)
 	s.mb.RecordSystemCPUUtilizationDataPoint(now, cpuUtilization.Irq, cpuUtilization.CPU, metadata.AttributeStateInterrupt)
 }
+
+func (s *scraper) recordCPUPhysicalCountDataPoint(now pcommon.Timestamp, count int) {
+	s.mb.RecordSystemCPUPhysicalCountDataPoint(now, int64(count))
+}
+
+func (s *scraper) recordCPULogicalCountDataPoint(now pcommon.Timestamp, count int) {
+	s.mb.RecordSystemCPULogicalCountDataPoint(now, int64(count))
+}

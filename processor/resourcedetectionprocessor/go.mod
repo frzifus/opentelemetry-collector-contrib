@@ -17,7 +17,7 @@ require (
 	go.opentelemetry.io/collector/config/configtls v0.81.0
 	go.opentelemetry.io/collector/confmap v0.81.0
 	go.opentelemetry.io/collector/consumer v0.81.0
-	go.opentelemetry.io/collector/pdata v1.0.0-rcv0013
+	go.opentelemetry.io/collector/pdata v1.0.0-rcv0016
 	go.opentelemetry.io/collector/processor v0.81.0
 	go.opentelemetry.io/collector/semconv v0.81.0
 	go.uber.org/multierr v1.11.0
@@ -27,7 +27,7 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.20.1 // indirect
+	cloud.google.com/go/compute v1.21.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Showmax/go-fqdn v1.0.0 // indirect
@@ -98,15 +98,15 @@ require (
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
-	google.golang.org/grpc v1.56.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

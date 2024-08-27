@@ -60,6 +60,11 @@ func (m *MockChannel) PublishWithDeferredConfirmWithContext(ctx context.Context,
 	return args.Get(0).(DeferredConfirmation), args.Error(1)
 }
 
+func (m *MockChannel) ConsumeWithContext(ctx context.Context, queue, consumer string, autoAck, exclusive, noLocal, noWait bool, targs Table) (<-chan Delivery, error) {
+	args := m.Called(ctx, queue, consumer, autoAck, exclusive, noLocal, noWait, targs)
+	return args.Get(0).(<-chan Delivery), args.Error(1)
+}
+
 func (m *MockChannel) IsClosed() bool {
 	args := m.Called()
 	return args.Bool(0)

@@ -18,17 +18,26 @@ type AmqpClient interface {
 	DialConfig(config DialConfig) (Connection, error)
 }
 
+type (
+	Table          = amqp.Table
+	Delivery       = amqp.Delivery
+	Publishing     = amqp.Publishing
+	Error          = amqp.Error
+	Authentication = amqp.Authentication
+)
+
 type Connection interface {
 	ReconnectIfUnhealthy() error
 	IsClosed() bool
 	Channel() (Channel, error)
-	NotifyClose(receiver chan *amqp.Error) chan *amqp.Error
+	NotifyClose(receiver chan *Error) chan *amqp.Error
 	Close() error
 }
 
 type Channel interface {
 	Confirm(noWait bool) error
-	PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg amqp.Publishing) (DeferredConfirmation, error)
+	ConsumeWithContext(ctx context.Context, queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args Table) (<-chan Delivery, error)
+	PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg Publishing) (DeferredConfirmation, error)
 	IsClosed() bool
 	Close() error
 }
@@ -58,7 +67,7 @@ type deferredConfirmationHolder struct {
 type DialConfig struct {
 	URL               string
 	Vhost             string
-	Auth              amqp.Authentication
+	Auth              Authentication
 	ConnectionTimeout time.Duration
 	Heartbeat         time.Duration
 	TLS               *tls.Config
@@ -176,12 +185,16 @@ func (c *channelHolder) Confirm(noWait bool) error {
 	return c.channel.Confirm(noWait)
 }
 
-func (c *channelHolder) PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg amqp.Publishing) (DeferredConfirmation, error) {
+func (c *channelHolder) PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg Publishing) (DeferredConfirmation, error) {
 	confirmation, err := c.channel.PublishWithDeferredConfirmWithContext(ctx, exchange, key, mandatory, immediate, msg)
 	if err != nil {
 		return nil, err
 	}
 	return &deferredConfirmationHolder{confirmation: confirmation}, nil
+}
+
+func (c *channelHolder) ConsumeWithContext(ctx context.Context, queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args Table) (<-chan Delivery, error) {
+	return c.channel.ConsumeWithContext(ctx, queue, consumer, autoAck, exclusive, noLocal, noWait, args)
 }
 
 func (c *channelHolder) IsClosed() bool {

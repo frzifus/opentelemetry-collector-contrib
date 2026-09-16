@@ -1,0 +1,9 @@
+display_name: S3 Query Extension
+type: s3_query
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [frzifus]

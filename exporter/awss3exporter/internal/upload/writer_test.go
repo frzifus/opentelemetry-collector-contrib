@@ -391,3 +391,40 @@ func TestS3ManagerUploadRequestChecksumCalculation(t *testing.T) {
 		})
 	}
 }
+
+func TestUploadOverrideKey(t *testing.T) {
+	t.Parallel()
+
+	var capturedKey string
+	s := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		capturedKey = r.URL.Path
+		_, _ = io.Copy(io.Discard, r.Body)
+		_ = r.Body.Close()
+	}))
+	t.Cleanup(s.Close)
+
+	sm := NewS3Manager(
+		zap.NewNop(),
+		"my-bucket",
+		&PartitionKeyBuilder{
+			PartitionPrefix: "telemetry",
+			PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+			FilePrefix:      "signal-data-",
+			Metadata:        "noop",
+			FileFormat:      "metrics",
+			UniqueKeyFunc: func() string {
+				return "random"
+			},
+		},
+		s3.New(s3.Options{
+			BaseEndpoint: aws.String(s.URL),
+			Region:       "local",
+		}),
+		"STANDARD",
+		WithACL(s3types.ObjectCannedACLPrivate),
+	)
+
+	err := sm.Upload(t.Context(), []byte("x"), &UploadOptions{OverrideKey: "traces/hour=10/blk1.parquet"})
+	assert.NoError(t, err, "Must not have return an error")
+	assert.Equal(t, "/my-bucket/traces/hour=10/blk1.parquet", capturedKey, "Must match the expected path with override key")
+}

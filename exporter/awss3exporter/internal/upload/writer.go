@@ -28,6 +28,8 @@ type ManagerOpt func(Manager)
 type UploadOptions struct {
 	OverrideBucket string
 	OverridePrefix string
+	// OverrideKey, when set, is used verbatim as the S3 object key.
+	OverrideKey string
 }
 
 type s3manager struct {
@@ -93,6 +95,9 @@ func (sw *s3manager) Upload(ctx context.Context, data []byte, opts *UploadOption
 	}
 
 	key := sw.builder.Build(now, overridePrefix)
+	if opts != nil && opts.OverrideKey != "" {
+		key = opts.OverrideKey
+	}
 	uploadInput := &transfermanager.UploadObjectInput{
 		Bucket:       aws.String(overrideBucket),
 		Key:          aws.String(key),

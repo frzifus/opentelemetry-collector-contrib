@@ -70,17 +70,22 @@ go test ./internal/store/ -run '^$' -bench BenchmarkQuerySearch -benchtime 20x -
 
 The Parquet-over-S3 design (based on the "AnalytiDB" paper and Tempo's approach) assumes that reading an 8–16 MiB Parquet block is cost-effective for S3: one GET request fetches the entire block, and Parquet's columnar layout + predicate pushdown minimize bytes scanned.
 
-**Expected behavior:**
-- **TraceByID:** 1 LIST (fetch all `.meta.json` keys), N GETs (one per block in the time window), where N depends on block count and time window. The bloom filter in each block's footer reduces unnecessary full-block reads when the trace ID is absent.
-- **Search:** Similar to TraceByID, but may require reading more rows within each block (less selective than a single trace ID lookup).
+**Current implementation (full-scan baseline):**
+- The read engine is currently **full-scan**: `store.FindBlocks` LISTs all `.meta.json`, and `TraceByID`/`Search` then GET **and fully decode every surviving block** overlapping the query time window (`parquettrace.ReadBlock` reads the whole object), filtering rows in Go.
+- Bloom filters ARE written into each block by `WriteBlock`, but the read path **never consults them**; there is no footer/row-group stat pruning and no column projection.
+- **Known limitation / next step:** bloom-filter lookup + Parquet footer/row-group stat pruning + column projection + concurrent range GETs are the paper's cost/latency optimization mechanism and are NOT yet implemented; these numbers therefore establish the full-scan baseline only.
+
+**Expected behavior for the current full-scan engine:**
+- **TraceByID:** 1 LIST (fetch all `.meta.json` keys), N GETs (one per block overlapping the time window), where N depends on block count and time window. Each block is fully decoded; row filtering happens in Go.
+- **Search:** Similar to TraceByID, with the same full-scan behavior.
 
 **What to look for in results:**
-1. **GETs/op:** Should correlate with the number of blocks in the time window. If significantly higher, investigate whether blocks are being read multiple times or bloom filters are not pruning effectively.
+1. **GETs/op:** Should equal the number of blocks overlapping the query time window (there is no bloom skip in the current implementation).
 2. **LISTs/op:** Should be 1 per query (one LIST to fetch all metadata files). Higher values indicate inefficiency.
-3. **Latency:** Dominated by S3 round-trip time + block download time. Compare against the paper's reported latencies for similar block counts.
+3. **Latency:** Dominated by S3 round-trip time + block download time. Compare against the paper's reported latencies for similar block counts, keeping in mind that the paper's optimized engine would issue fewer GETs via bloom/stat pruning.
 
 **Potential findings:**
-- If GETs/op is much higher than block count: bloom filter may not be working, or block pruning logic may be incorrect.
+- If GETs/op does not match the block count in the time window: investigate whether blocks are being read multiple times or block-time filtering logic is incorrect.
 - If latency is much higher than expected: check network conditions, S3 region proximity, or block size (smaller blocks = more requests).
 - If LISTs/op > 1: investigate whether the `FindBlocks` method is being called multiple times per query.
 

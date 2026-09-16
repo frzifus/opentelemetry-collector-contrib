@@ -8,6 +8,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/s3queryextension/internal/traceql"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
@@ -80,4 +81,56 @@ func (s *Store) TraceByID(ctx context.Context, traceID []byte, startNano, endNan
 		return ptrace.NewTraces(), false, nil
 	}
 	return parquettrace.RowsToTraces(matched), true, nil
+}
+
+type SearchResult struct {
+	TraceID         []byte
+	RootServiceName string
+	RootSpanName    string
+	StartUnixNano   int64
+	DurationNano    int64
+}
+
+func (s *Store) Search(ctx context.Context, q traceql.Query, startNano, endNano int64, limit int) ([]SearchResult, error) {
+	blocks, err := s.FindBlocks(ctx, startNano, endNano, q.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+	byTrace := map[string]*SearchResult{}
+	var order []string
+	for _, b := range blocks {
+		data, err := s.OS.Get(ctx, b.Path)
+		if err != nil {
+			continue
+		}
+		rows, err := parquettrace.ReadBlock(data)
+		if err != nil {
+			continue
+		}
+		for _, r := range rows {
+			if !matchRow(r, q) {
+				continue
+			}
+			key := string(r.TraceID)
+			cur, ok := byTrace[key]
+			if !ok {
+				byTrace[key] = &SearchResult{TraceID: r.TraceID, RootServiceName: r.ServiceName, RootSpanName: r.SpanName, StartUnixNano: r.StartUnixNano, DurationNano: r.DurationNano}
+				order = append(order, key)
+				continue
+			}
+			if r.StartUnixNano < cur.StartUnixNano {
+				cur.StartUnixNano = r.StartUnixNano
+				cur.RootServiceName = r.ServiceName
+				cur.RootSpanName = r.SpanName
+			}
+		}
+	}
+	var out []SearchResult
+	for _, k := range order {
+		out = append(out, *byTrace[k])
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
 }

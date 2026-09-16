@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -19,6 +20,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -737,4 +739,52 @@ func TestParquetConfigValidate(t *testing.T) {
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected error for target_block_size=0")
 	}
+}
+
+func TestParquetConfigUnmarshalDefaults(t *testing.T) {
+	// Test that Unmarshal applies defaults when parquet: {} is present
+	configMap := map[string]any{
+		"s3uploader": map[string]any{
+			"region":   "us-east-1",
+			"s3_bucket": "test-bucket",
+		},
+		"parquet": map[string]any{},
+	}
+	conf := confmap.NewFromStringMap(configMap)
+	cfg := createDefaultConfig().(*Config)
+	err := conf.Unmarshal(cfg)
+	require.NoError(t, err)
+
+	pc := cfg.Parquet.Get()
+	require.NotNil(t, pc, "parquet config should be set")
+	assert.Equal(t, int64(12*1024*1024), pc.TargetBlockSize, "TargetBlockSize default")
+	assert.Equal(t, 60*time.Second, pc.MaxBlockAge, "MaxBlockAge default")
+	assert.NotEmpty(t, pc.PromotedAttributes, "PromotedAttributes should have defaults")
+	assert.NotEmpty(t, pc.BloomAttributes, "BloomAttributes should have defaults")
+	assert.Equal(t, parquettrace.DefaultPromoted, pc.PromotedAttributes, "PromotedAttributes should match parquettrace.DefaultPromoted")
+	assert.Equal(t, parquettrace.DefaultBloom, pc.BloomAttributes, "BloomAttributes should match parquettrace.DefaultBloom")
+
+	// Config should pass validation with defaults
+	cfg.S3Uploader.StorageClass = "STANDARD"
+	require.NoError(t, cfg.Validate())
+
+	// Test that explicitly-set values are not overridden
+	configMapCustom := map[string]any{
+		"s3uploader": map[string]any{
+			"region":   "us-east-1",
+			"s3_bucket": "test-bucket",
+		},
+		"parquet": map[string]any{
+			"target_block_size": 5 * 1024 * 1024, // 5 MiB
+		},
+	}
+	confCustom := confmap.NewFromStringMap(configMapCustom)
+	cfgCustom := createDefaultConfig().(*Config)
+	err = confCustom.Unmarshal(cfgCustom)
+	require.NoError(t, err)
+
+	pcCustom := cfgCustom.Parquet.Get()
+	require.NotNil(t, pcCustom, "parquet config should be set")
+	assert.Equal(t, int64(5*1024*1024), pcCustom.TargetBlockSize, "custom TargetBlockSize should not be overridden")
+	assert.Equal(t, 60*time.Second, pcCustom.MaxBlockAge, "MaxBlockAge should still get default")
 }

@@ -9,11 +9,14 @@ import (
 
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.uber.org/multierr"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace"
 )
 
 const (
@@ -113,6 +116,32 @@ type Config struct {
 	EncodingFileExtension string                               `mapstructure:"encoding_file_extension"`
 	ResourceAttrsToS3     ResourceAttrsToS3                    `mapstructure:"resource_attrs_to_s3"`
 	Parquet               configoptional.Optional[ParquetConfig] `mapstructure:"parquet"`
+}
+
+type configAlias Config
+
+func (c *Config) Unmarshal(conf *confmap.Conf) error {
+	if conf == nil {
+		return nil
+	}
+	if err := conf.Unmarshal((*configAlias)(c)); err != nil {
+		return err
+	}
+	if pc := c.Parquet.Get(); pc != nil {
+		if pc.TargetBlockSize == 0 {
+			pc.TargetBlockSize = 12 * 1024 * 1024
+		}
+		if pc.MaxBlockAge == 0 {
+			pc.MaxBlockAge = 60 * time.Second
+		}
+		if len(pc.PromotedAttributes) == 0 {
+			pc.PromotedAttributes = parquettrace.DefaultPromoted
+		}
+		if len(pc.BloomAttributes) == 0 {
+			pc.BloomAttributes = parquettrace.DefaultBloom
+		}
+	}
+	return nil
 }
 
 func (c *Config) Validate() error {

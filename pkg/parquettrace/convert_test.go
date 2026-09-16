@@ -51,3 +51,43 @@ func TestRoundTripSingleSpan(t *testing.T) {
 		t.Fatalf("roundtrip attr lost")
 	}
 }
+
+func TestResourceAttributesPreserved(t *testing.T) {
+	td := ptrace.NewTraces()
+	rs := td.ResourceSpans().AppendEmpty()
+	rs.Resource().Attributes().PutStr("service.name", "checkout")
+	rs.Resource().Attributes().PutStr("deployment.environment", "prod")
+	rs.Resource().Attributes().PutInt("host.port", 8080)
+	ss := rs.ScopeSpans().AppendEmpty()
+	sp := ss.Spans().AppendEmpty()
+	sp.SetTraceID([16]byte{1})
+	sp.SetSpanID([8]byte{2})
+	sp.SetName("GET /cart")
+	sp.SetKind(ptrace.SpanKindServer)
+	sp.SetStartTimestamp(100)
+	sp.SetEndTimestamp(400)
+
+	rows := TracesToRows(td)
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	r := rows[0]
+
+	// Resource attributes (except service.name which is promoted) should be in typed maps
+	if r.AttrsStr["deployment.environment"] != "prod" {
+		t.Fatalf("deployment.environment not preserved in AttrsStr: %+v", r.AttrsStr)
+	}
+	if r.AttrsInt["host.port"] != 8080 {
+		t.Fatalf("host.port not preserved in AttrsInt: %+v", r.AttrsInt)
+	}
+
+	// Verify roundtrip: resource attributes should survive as span attributes
+	back := RowsToTraces(rows)
+	got := back.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
+	if v, ok := got.Attributes().Get("deployment.environment"); !ok || v.Str() != "prod" {
+		t.Fatalf("roundtrip: deployment.environment lost")
+	}
+	if v, ok := got.Attributes().Get("host.port"); !ok || v.Int() != 8080 {
+		t.Fatalf("roundtrip: host.port lost")
+	}
+}

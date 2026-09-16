@@ -59,6 +59,13 @@ func spanToRow(sp ptrace.Span, svc string, resAttrs pcommon.Map) SpanRow {
 		putTyped(&r, key, v)
 		return true
 	})
+	resAttrs.Range(func(key string, v pcommon.Value) bool {
+		if key == ColServiceName {
+			return true // promoted to a dedicated column
+		}
+		putTyped(&r, key, v)
+		return true
+	})
 	return r
 }
 
@@ -79,8 +86,8 @@ func putTyped(r *SpanRow, key string, v pcommon.Value) {
 	}
 }
 
-func idBytes(id pcommon.TraceID) []byte  { b := id; return b[:] }
-func spanIDBytes(id pcommon.SpanID) []byte { b := id; return b[:] }
+func idBytes(id pcommon.TraceID) []byte  { return id[:] }
+func spanIDBytes(id pcommon.SpanID) []byte { return id[:] }
 
 func RowsToTraces(rows []SpanRow) ptrace.Traces {
 	td := ptrace.NewTraces()

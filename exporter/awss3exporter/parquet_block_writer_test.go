@@ -6,6 +6,7 @@ package awss3exporter
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,17 +19,32 @@ import (
 )
 
 type capUpload struct {
+	mu   sync.Mutex
 	keys []string
 	data map[string][]byte
 }
 
 func (c *capUpload) Upload(_ context.Context, data []byte, opts *upload.UploadOptions) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.data == nil {
 		c.data = map[string][]byte{}
 	}
 	c.keys = append(c.keys, opts.OverrideKey)
 	c.data[opts.OverrideKey] = append([]byte{}, data...)
 	return nil
+}
+
+func (c *capUpload) getKeys() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string{}, c.keys...)
+}
+
+func (c *capUpload) getData(key string) []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.data[key]
 }
 
 func TestBlockWriterFlushesBlockAndMeta(t *testing.T) {
@@ -52,8 +68,9 @@ func TestBlockWriterFlushesBlockAndMeta(t *testing.T) {
 	if err := bw.Add(context.Background(), sampleTraces()); err != nil {
 		t.Fatal(err)
 	}
+	keys := cap.getKeys()
 	var parquetKey, metaKey string
-	for _, k := range cap.keys {
+	for _, k := range keys {
 		if strings.HasSuffix(k, ".parquet") {
 			parquetKey = k
 		}
@@ -62,14 +79,82 @@ func TestBlockWriterFlushesBlockAndMeta(t *testing.T) {
 		}
 	}
 	if parquetKey == "" || metaKey == "" {
-		t.Fatalf("expected both keys, got %v", cap.keys)
+		t.Fatalf("expected both keys, got %v", keys)
 	}
 	if parquettrace.MetaKeyFor(parquetKey) != metaKey {
 		t.Fatalf("meta key %q does not match parquet key %q", metaKey, parquetKey)
 	}
-	meta, err := parquettrace.UnmarshalBlockMeta(cap.data[metaKey])
+	meta, err := parquettrace.UnmarshalBlockMeta(cap.getData(metaKey))
 	if err != nil || meta.RowCount == 0 || meta.Path != parquetKey {
 		t.Fatalf("bad meta: %+v err=%v", meta, err)
+	}
+}
+
+func TestBlockWriterShutdownIdempotent(t *testing.T) {
+	cap := &capUpload{}
+	bw := newBlockWriter(
+		ParquetConfig{
+			TargetBlockSize:    1024 * 1024,
+			MaxBlockAge:        time.Hour,
+			PromotedAttributes: parquettrace.DefaultPromoted,
+			BloomAttributes:    parquettrace.DefaultBloom,
+		},
+		cap,
+		func(time.Time) string { return "traces/hour=10" },
+		zap.NewNop(),
+	)
+	ctx := context.Background()
+	// First shutdown should succeed
+	if err := bw.Shutdown(ctx); err != nil {
+		t.Fatalf("first Shutdown failed: %v", err)
+	}
+	// Second shutdown should not panic and should return nil
+	if err := bw.Shutdown(ctx); err != nil {
+		t.Fatalf("second Shutdown failed: %v", err)
+	}
+}
+
+func TestBlockWriterAgeBasedFlush(t *testing.T) {
+	cap := &capUpload{}
+	bw := newBlockWriter(
+		ParquetConfig{
+			TargetBlockSize:    1024 * 1024 * 1024, // very large to avoid size-based flush
+			MaxBlockAge:        50 * time.Millisecond,
+			PromotedAttributes: parquettrace.DefaultPromoted,
+			BloomAttributes:    parquettrace.DefaultBloom,
+		},
+		cap,
+		func(time.Time) string { return "traces/hour=10" },
+		zap.NewNop(),
+	)
+	defer func() {
+		if err := bw.Shutdown(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	// Add traces but don't trigger size-based flush
+	if err := bw.Add(context.Background(), sampleTraces()); err != nil {
+		t.Fatal(err)
+	}
+	// Initially no uploads should have happened
+	if len(cap.getKeys()) > 0 {
+		t.Fatalf("expected no uploads yet, got %d", len(cap.getKeys()))
+	}
+	// Wait for the age ticker to fire
+	time.Sleep(100 * time.Millisecond)
+	// Now we should have a flush from the age ticker
+	keys := cap.getKeys()
+	if len(keys) == 0 {
+		t.Fatal("expected age-based flush to upload blocks")
+	}
+	var parquetKey string
+	for _, k := range keys {
+		if strings.HasSuffix(k, ".parquet") {
+			parquetKey = k
+		}
+	}
+	if parquetKey == "" {
+		t.Fatalf("expected .parquet key after age flush, got %v", keys)
 	}
 }
 

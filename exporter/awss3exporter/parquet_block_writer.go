@@ -100,10 +100,15 @@ func (b *blockWriter) flushLocked(ctx context.Context) error {
 }
 
 func (b *blockWriter) Shutdown(ctx context.Context) error {
-	close(b.done)
-	b.ticker.Stop()
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	select {
+	case <-b.done:
+		return nil // already shut down
+	default:
+		close(b.done)
+		b.ticker.Stop()
+	}
 	return b.flushLocked(ctx)
 }
 

@@ -5,6 +5,7 @@ package s3queryextension // import "github.com/open-telemetry/opentelemetry-coll
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"go.opentelemetry.io/collector/component"
@@ -46,11 +47,14 @@ func (e *s3QueryExtension) Start(ctx context.Context, host component.Host) error
 
 	e.server, err = e.cfg.ServerConfig.ToServer(ctx, host.GetExtensions(), e.settings.TelemetrySettings, mux)
 	if err != nil {
+		_ = ln.Close()
 		return err
 	}
 
 	go func() {
-		_ = e.server.Serve(ln)
+		if err := e.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			e.settings.Logger.Error("s3query server stopped", zap.Error(err))
+		}
 	}()
 
 	return nil
@@ -60,7 +64,7 @@ func (e *s3QueryExtension) Shutdown(ctx context.Context) error {
 	if e.server == nil {
 		return nil
 	}
-	return e.server.Close()
+	return e.server.Shutdown(ctx)
 }
 
 // buildFrontends constructs the enabled query frontends (Tempo/TraceQL, PromQL, LogQL).

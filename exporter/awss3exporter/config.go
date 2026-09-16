@@ -91,6 +91,14 @@ type ResourceAttrsToS3 struct {
 	_ struct{}
 }
 
+// ParquetConfig configures the Parquet block writer for trace data.
+type ParquetConfig struct {
+	TargetBlockSize    int64         `mapstructure:"target_block_size"`   // bytes; default 12*1024*1024
+	MaxBlockAge        time.Duration `mapstructure:"max_block_age"`       // default 60s
+	PromotedAttributes []string      `mapstructure:"promoted_attributes"` // default parquettrace.DefaultPromoted
+	BloomAttributes    []string      `mapstructure:"bloom_attributes"`    // default parquettrace.DefaultBloom
+}
+
 // Config contains the main configuration options for the s3 exporter
 type Config struct {
 	BackOffConfig configretry.BackOffConfig `mapstructure:"retry_on_failure"`
@@ -101,9 +109,10 @@ type Config struct {
 	MarshalerName   MarshalerType                                            `mapstructure:"marshaler"`
 
 	// Encoding to apply. If present, overrides the marshaler configuration option.
-	Encoding              *component.ID     `mapstructure:"encoding"`
-	EncodingFileExtension string            `mapstructure:"encoding_file_extension"`
-	ResourceAttrsToS3     ResourceAttrsToS3 `mapstructure:"resource_attrs_to_s3"`
+	Encoding              *component.ID                        `mapstructure:"encoding"`
+	EncodingFileExtension string                               `mapstructure:"encoding_file_extension"`
+	ResourceAttrsToS3     ResourceAttrsToS3                    `mapstructure:"resource_attrs_to_s3"`
+	Parquet               configoptional.Optional[ParquetConfig] `mapstructure:"parquet"`
 }
 
 func (c *Config) Validate() error {
@@ -152,5 +161,15 @@ func (c *Config) Validate() error {
 	if c.S3Uploader.UniqueKeyFuncName != "" && !validUniqueKeyFuncs[c.S3Uploader.UniqueKeyFuncName] {
 		errs = multierr.Append(errs, errors.New("invalid UniqueKeyFuncName"))
 	}
+
+	if pc := c.Parquet.Get(); pc != nil {
+		if pc.TargetBlockSize <= 0 {
+			errs = multierr.Append(errs, errors.New("parquet.target_block_size must be > 0"))
+		}
+		if pc.MaxBlockAge <= 0 {
+			errs = multierr.Append(errs, errors.New("parquet.max_block_age must be > 0"))
+		}
+	}
+
 	return errs
 }

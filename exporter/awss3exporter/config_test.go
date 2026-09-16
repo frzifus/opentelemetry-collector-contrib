@@ -728,3 +728,13 @@ func TestConfigS3BasePrefixWithResourceAttrs(t *testing.T) {
 	}, e,
 	)
 }
+
+func TestParquetConfigValidate(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.S3Uploader.Region = "us-east-1"
+	cfg.S3Uploader.S3Bucket = "b"
+	cfg.Parquet = configoptional.Some(ParquetConfig{TargetBlockSize: 0, MaxBlockAge: time.Second})
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error for target_block_size=0")
+	}
+}

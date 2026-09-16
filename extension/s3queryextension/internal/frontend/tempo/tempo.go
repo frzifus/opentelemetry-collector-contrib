@@ -26,6 +26,8 @@ func New(s *store.Store) *Frontend { return &Frontend{store: s} }
 
 func (*Frontend) Name() string { return "tempo" }
 
+const maxSearchLimit = 1000
+
 func (f *Frontend) Register(mux *http.ServeMux) {
 	s := f.store
 	mux.HandleFunc("GET /api/traces/{traceID}", func(w http.ResponseWriter, r *http.Request) {
@@ -59,11 +61,15 @@ func (f *Frontend) Register(mux *http.ServeMux) {
 			return
 		}
 		start, end := timeRange(r)
-		limit := 20
+		limit := 20 // default
 		if l := r.URL.Query().Get("limit"); l != "" {
-			if n, err := strconv.Atoi(l); err == nil {
+			if n, err := strconv.Atoi(l); err == nil && n > 0 {
 				limit = n
+				if limit > maxSearchLimit {
+					limit = maxSearchLimit
+				}
 			}
+			// If unparseable or <= 0, use default
 		}
 		res, err := s.Search(r.Context(), q, start, end, limit)
 		if err != nil {

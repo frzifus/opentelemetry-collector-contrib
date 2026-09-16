@@ -91,7 +91,13 @@ type SearchResult struct {
 	DurationNano    int64
 }
 
+const defaultSearchCap = 1000
+
 func (s *Store) Search(ctx context.Context, q traceql.Query, startNano, endNano int64, limit int) ([]SearchResult, error) {
+	// Defensive: if limit <= 0, treat as internal safety cap
+	if limit <= 0 {
+		limit = defaultSearchCap
+	}
 	blocks, err := s.FindBlocks(ctx, startNano, endNano, q.ServiceName)
 	if err != nil {
 		return nil, err
@@ -128,7 +134,7 @@ func (s *Store) Search(ctx context.Context, q traceql.Query, startNano, endNano 
 	var out []SearchResult
 	for _, k := range order {
 		out = append(out, *byTrace[k])
-		if limit > 0 && len(out) >= limit {
+		if len(out) >= limit {
 			break
 		}
 	}

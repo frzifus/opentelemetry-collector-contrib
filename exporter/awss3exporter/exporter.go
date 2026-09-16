@@ -6,6 +6,7 @@ package awss3exporter // import "github.com/open-telemetry/opentelemetry-collect
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -20,11 +21,12 @@ import (
 )
 
 type s3Exporter struct {
-	config     *Config
-	signalType string
-	uploader   upload.Manager
-	logger     *zap.Logger
-	marshaler  marshaler
+	config      *Config
+	signalType  string
+	uploader    upload.Manager
+	logger      *zap.Logger
+	marshaler   marshaler
+	blockWriter *blockWriter
 }
 
 func newS3Exporter(
@@ -80,11 +82,45 @@ func (e *s3Exporter) start(ctx context.Context, host component.Host) error {
 		return err
 	}
 	e.uploader = up
+
+	// Construct blockWriter when parquet is configured (traces only)
+	if pc := e.config.Parquet.Get(); pc != nil && e.signalType == "traces" {
+		var s3PartitionTimeLocation *time.Location
+		if e.config.S3Uploader.S3PartitionTimezone != "" {
+			s3PartitionTimeLocation, err = time.LoadLocation(e.config.S3Uploader.S3PartitionTimezone)
+			if err != nil {
+				return fmt.Errorf("invalid S3 partition timezone: %w", err)
+			}
+		} else {
+			s3PartitionTimeLocation = time.Local
+		}
+
+		pkb := &upload.PartitionKeyBuilder{
+			PartitionBasePrefix:   e.config.S3Uploader.S3BasePrefix,
+			PartitionPrefix:       e.config.S3Uploader.S3Prefix,
+			PartitionFormat:       e.config.S3Uploader.S3PartitionFormat,
+			PartitionTimeLocation: s3PartitionTimeLocation,
+		}
+
+		keyPrefix := func(ts time.Time) string {
+			return pkb.BucketKeyPrefix(ts, "")
+		}
+
+		e.blockWriter = newBlockWriter(*pc, up, keyPrefix, e.logger)
+	}
+
 	return nil
 }
 
 func (*s3Exporter) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
+}
+
+func (e *s3Exporter) shutdown(ctx context.Context) error {
+	if e.blockWriter != nil {
+		return e.blockWriter.Shutdown(ctx)
+	}
+	return nil
 }
 
 func (e *s3Exporter) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
@@ -109,6 +145,10 @@ func (e *s3Exporter) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
 }
 
 func (e *s3Exporter) ConsumeTraces(ctx context.Context, traces ptrace.Traces) error {
+	if e.blockWriter != nil {
+		return e.blockWriter.Add(ctx, traces)
+	}
+
 	buf, err := e.marshaler.MarshalTraces(traces)
 	if err != nil {
 		return err

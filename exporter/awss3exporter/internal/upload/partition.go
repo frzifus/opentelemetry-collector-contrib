@@ -60,6 +60,11 @@ func (pki *PartitionKeyBuilder) Build(ts time.Time, overridePrefix string) strin
 	return path.Join(pki.bucketKeyPrefix(ts, overridePrefix), pki.fileName())
 }
 
+// BucketKeyPrefix returns the partition prefix for the given timestamp (exported wrapper for blockWriter).
+func (pki *PartitionKeyBuilder) BucketKeyPrefix(ts time.Time, overridePrefix string) string {
+	return pki.bucketKeyPrefix(ts, overridePrefix)
+}
+
 func (pki *PartitionKeyBuilder) bucketKeyPrefix(ts time.Time, overridePrefix string) string {
 	// Don't want to overwrite the actual value
 	prefix := pki.PartitionPrefix

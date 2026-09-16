@@ -56,7 +56,7 @@ func parseClause(p string) (Clause, error) {
 			c := Clause{Field: strings.TrimPrefix(field, "."), Op: op}
 			if strings.HasPrefix(val, `"`) {
 				c.Str = strings.Trim(val, `"`)
-			} else if d, err := time.ParseDuration(val); err == nil && (field == "duration") {
+			} else if d, err := time.ParseDuration(val); err == nil && (c.Field == "duration") {
 				c.Num = float64(d.Nanoseconds())
 				c.IsNum = true
 			} else if n, err := strconv.ParseFloat(val, 64); err == nil {
@@ -80,8 +80,13 @@ func applyClause(q *Query, c Clause) error {
 	case "duration":
 		if c.Op == ">" || c.Op == ">=" {
 			q.MinDurationNano = int64(c.Num)
+		} else {
+			return fmt.Errorf("unsupported operator %q for duration", c.Op)
 		}
 	case "status":
+		if c.Op != "=" {
+			return fmt.Errorf("unsupported operator %q for status", c.Op)
+		}
 		code := int32(0)
 		switch c.Str {
 		case "error":

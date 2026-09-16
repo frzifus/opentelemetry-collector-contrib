@@ -13,6 +13,7 @@ require (
 	github.com/itchyny/timefmt-go v0.1.8
 	github.com/klauspost/compress v1.20.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.160.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.12.1
 	github.com/tilinna/clock v1.1.0
 	go.opentelemetry.io/collector/component v1.66.1-0.20260910194618-5602640a11d3
@@ -71,7 +72,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace v0.0.0-00010101000000-000000000000 // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect
 	github.com/parquet-go/jsonlite v1.0.0 // indirect
 	github.com/parquet-go/parquet-go v0.32.0 // indirect

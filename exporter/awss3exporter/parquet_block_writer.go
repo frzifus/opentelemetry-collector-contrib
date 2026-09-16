@@ -64,10 +64,18 @@ func (b *blockWriter) Add(ctx context.Context, td ptrace.Traces) error {
 	rows := parquettrace.TracesToRows(td)
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	// Record pre-append state for rollback on flush error
+	preAppendLen := len(b.rows)
+	preAppendBytes := b.estBytes
 	b.rows = append(b.rows, rows...)
 	b.estBytes += estimateSize(rows)
 	if b.estBytes >= b.cfg.TargetBlockSize {
-		return b.flushLocked(ctx)
+		if err := b.flushLocked(ctx); err != nil {
+			// Roll back the append to prevent retry duplication
+			b.rows = b.rows[:preAppendLen]
+			b.estBytes = preAppendBytes
+			return err
+		}
 	}
 	return nil
 }

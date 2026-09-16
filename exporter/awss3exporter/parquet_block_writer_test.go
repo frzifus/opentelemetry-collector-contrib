@@ -5,6 +5,7 @@ package awss3exporter
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -155,6 +156,81 @@ func TestBlockWriterAgeBasedFlush(t *testing.T) {
 	}
 	if parquetKey == "" {
 		t.Fatalf("expected .parquet key after age flush, got %v", keys)
+	}
+}
+
+type failingUpload struct {
+	mu        sync.Mutex
+	failCount int
+	delegate  *capUpload
+}
+
+func (f *failingUpload) Upload(ctx context.Context, data []byte, opts *upload.UploadOptions) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failCount > 0 {
+		f.failCount--
+		return errors.New("simulated upload failure")
+	}
+	return f.delegate.Upload(ctx, data, opts)
+}
+
+func TestBlockWriterRollbackOnFlushError(t *testing.T) {
+	cap := &capUpload{}
+	failing := &failingUpload{failCount: 1, delegate: cap}
+	bw := newBlockWriter(
+		ParquetConfig{
+			TargetBlockSize:    1, // size=1 forces flush on every Add
+			MaxBlockAge:        time.Hour,
+			PromotedAttributes: parquettrace.DefaultPromoted,
+			BloomAttributes:    parquettrace.DefaultBloom,
+		},
+		failing,
+		func(time.Time) string { return "traces/hour=10" },
+		zap.NewNop(),
+	)
+	defer func() {
+		if err := bw.Shutdown(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// First Add should trigger flush which fails
+	td := sampleTraces()
+	err := bw.Add(context.Background(), td)
+	if err == nil {
+		t.Fatal("expected error from first Add, got nil")
+	}
+
+	// Second Add should succeed (failCount is now 0)
+	err = bw.Add(context.Background(), td)
+	if err != nil {
+		t.Fatalf("expected second Add to succeed, got error: %v", err)
+	}
+
+	// Verify only one parquet file was written (no duplication)
+	keys := cap.getKeys()
+	parquetCount := 0
+	var parquetKey string
+	for _, k := range keys {
+		if strings.HasSuffix(k, ".parquet") {
+			parquetCount++
+			parquetKey = k
+		}
+	}
+	if parquetCount != 1 {
+		t.Fatalf("expected exactly 1 parquet file, got %d", parquetCount)
+	}
+
+	// Verify the parquet file contains the expected number of rows (not duplicated)
+	// Read the block and check row count
+	meta, err := parquettrace.UnmarshalBlockMeta(cap.getData(parquettrace.MetaKeyFor(parquetKey)))
+	if err != nil {
+		t.Fatalf("failed to unmarshal meta: %v", err)
+	}
+	expectedRows := len(parquettrace.TracesToRows(td))
+	if meta.RowCount != expectedRows {
+		t.Fatalf("expected %d rows, got %d (possible duplication)", expectedRows, meta.RowCount)
 	}
 }
 

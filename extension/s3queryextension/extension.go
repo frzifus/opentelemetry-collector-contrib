@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/s3queryextension/internal/frontend"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/s3queryextension/internal/frontend/tempo"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/s3queryextension/internal/store"
 )
 
 type s3QueryExtension struct {
@@ -68,8 +70,15 @@ func (e *s3QueryExtension) Shutdown(ctx context.Context) error {
 }
 
 // buildFrontends constructs the enabled query frontends (Tempo/TraceQL, PromQL, LogQL).
-// For Task 13: returns empty slice — the Tempo frontend is wired in Task 14.
 func (e *s3QueryExtension) buildFrontends(ctx context.Context) ([]frontend.Frontend, error) {
-	// Trace frontend (Tempo/TraceQL) is wired in Task 14 once the tempo package exists.
-	return nil, nil
+	var fs []frontend.Frontend
+	if e.cfg.Traces.Enabled {
+		os, err := store.NewS3Store(ctx, e.cfg.S3)
+		if err != nil {
+			return nil, err
+		}
+		fs = append(fs, tempo.New(&store.Store{OS: os, Prefix: e.cfg.Traces.Prefix}))
+	}
+	// future: if e.cfg.Metrics.Enabled { fs = append(fs, promql.New(...)) }
+	return fs, nil
 }

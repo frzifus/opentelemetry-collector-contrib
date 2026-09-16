@@ -4,10 +4,12 @@
 package store // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/s3queryextension/internal/store"
 
 import (
+	"bytes"
 	"context"
 	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/parquettrace"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 type Store struct {
@@ -51,4 +53,31 @@ func contains(ss []string, v string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Store) TraceByID(ctx context.Context, traceID []byte, startNano, endNano int64) (ptrace.Traces, bool, error) {
+	blocks, err := s.FindBlocks(ctx, startNano, endNano, "")
+	if err != nil {
+		return ptrace.NewTraces(), false, err
+	}
+	var matched []parquettrace.SpanRow
+	for _, b := range blocks {
+		data, err := s.OS.Get(ctx, b.Path)
+		if err != nil {
+			continue
+		}
+		rows, err := parquettrace.ReadBlock(data)
+		if err != nil {
+			continue
+		}
+		for _, r := range rows {
+			if bytes.Equal(r.TraceID, traceID) {
+				matched = append(matched, r)
+			}
+		}
+	}
+	if len(matched) == 0 {
+		return ptrace.NewTraces(), false, nil
+	}
+	return parquettrace.RowsToTraces(matched), true, nil
 }
